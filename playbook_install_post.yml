@@ -1,0 +1,71 @@
+---
+- hosts: all
+  remote_user: ubuntu
+  become: true
+  tasks:
+    - name: Create directory Nginx config
+      ansible.builtin.file:
+        path: ./nginxServers/server
+        state: directory
+
+    - name: Create directory PostgresDB config
+      ansible.builtin.file:
+        path: ./Post_DB/
+        state: directory
+    
+    - name: Create directory PostgresDB buckup
+      ansible.builtin.file:
+        path: ./tmp/bkups/postgres/db
+        state: directory
+
+    - name: Copy local config PostgresDB
+      ansible.builtin.copy:
+        src: ./Post_DB/CreateDB.sql
+        dest: /Post_DB
+
+    - name: Copy local config Nginx
+      ansible.builtin.copy:
+        src: ./nginxServers/server/nginx.conf
+        dest: /nginxServers/server
+
+    - name: Create Postgres Container
+      docker_container:
+        name: postgres
+        image: postgres:16
+        state: started
+        recreate: yes
+        volumes:
+          - ./Post_DB/CreateDB.sql:/docker-entrypoint-initdb.d/init.sql
+          - ./tmp/bkups/postgres/db:/bkups
+        env:
+          POSTGRES_USER: "master"
+          POSTGRES_PASSWORD: "secret"
+          POSTGRES_DB: "web_db"
+        ports:
+          - "5432:5432"
+    
+    - name: Create Pgadmin Container
+      docker_container:
+        links:
+          - postgres:postgres
+        name: pgadmin
+        image: dpage/pgadmin4:latest
+        state: started
+        recreate: yes
+        ports:
+          - "5050:80"
+        env:
+          PGADMIN_DEFAULT_EMAIL: 'master@pg.com'
+          PGADMIN_DEFAULT_PASSWORD: 'secret'
+    
+    - name: Create a new container Nginx
+      docker_container:
+        links:
+          - pgadmin:pgadmin
+        name: nginx_pgadmin
+        image: nginx
+        auto_remove: yes
+        ports:
+          - "80:80"
+        volumes:
+          - ./nginxServers/server/nginx.conf:/etc/nginx/conf.d/default.conf

@@ -1,0 +1,36 @@
+version: '3'
+
+services:
+  postgres:
+    container_name: postgres
+    image: postgres
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: web_db
+
+    volumes:
+      - ./Post_DB/CreateDB.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./bkups/:/bkups
+    ports:
+      - "5432:5432"
+
+  pgadmin:
+    links:
+      - postgres:postgres
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: 'postgres@pg.com'
+      PGADMIN_DEFAULT_PASSWORD: 'postgres'
+    ports:
+      - "5050:80"
+    restart: unless-stopped
+
+  nginx:
+    links:
+      - pgadmin:pgadmin
+    image: "nginx:1.13.12"
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginxServers/server/nginx.conf:/etc/nginx/conf.d/default.conf

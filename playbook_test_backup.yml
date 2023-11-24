@@ -1,0 +1,15 @@
+---
+- name: Install docker
+  gather_facts: yes #Сбор информации о сервере.
+  hosts: all # на все сервера
+  vars: #переменые
+    backup_dir: ./tmp/bkups/postgres/db
+    db_dump_name: web_db-{{ ansible_date_time.date }}.bkp
+  tasks:
+  - name: Fetch the dumped DB from remote to local
+    fetch:
+      src: "{{ backup_dir }}/{{ db_dump_name }}"
+      dest: "{{ backup_dir }}/"
+      flat: yes
+
+  
